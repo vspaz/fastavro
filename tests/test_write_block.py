@@ -5,17 +5,10 @@ schema = {
     "type": "record",
     "name": "test_block_iteration",
     "fields": [
-        {
-            "name": "nullable_str",
-            "type": ["string", "null"]
-        }, {
-            "name": "str_field",
-            "type": "string"
-        }, {
-            "name": "int_field",
-            "type": "int"
-        }
-    ]
+        {"name": "nullable_str", "type": ["string", "null"]},
+        {"name": "str_field", "type": "string"},
+        {"name": "int_field", "type": "int"},
+    ],
 }
 
 
@@ -24,13 +17,13 @@ def make_records(num_records=2000):
         {
             "nullable_str": None if i % 3 == 0 else "%d-%d" % (i, i),
             "str_field": "%d %d %d" % (i, i, i),
-            "int_field": i * 10
+            "int_field": i * 10,
         }
         for i in range(num_records)
     ]
 
 
-def make_blocks(num_records=2000, codec='null'):
+def make_blocks(num_records=2000, codec="null"):
     records = make_records(num_records)
 
     new_file = MemoryIO()
@@ -46,7 +39,7 @@ def make_blocks(num_records=2000, codec='null'):
     return blocks, records
 
 
-def check_concatenate(source_codec='null', output_codec='null'):
+def check_concatenate(source_codec="null", output_codec="null"):
     blocks1, records1 = make_blocks(codec=source_codec)
     blocks2, records2 = make_blocks(codec=source_codec)
 
@@ -68,8 +61,8 @@ def test_block_concatenation():
 
 
 def test_block_concatenation_deflated():
-    check_concatenate(source_codec='deflate', output_codec='deflate')
+    check_concatenate(source_codec="deflate", output_codec="deflate")
 
 
 def test_block_concatenation_deflated_output():
-    check_concatenate(source_codec='null', output_codec='deflate')
+    check_concatenate(source_codec="null", output_codec="deflate")

@@ -1,19 +1,20 @@
 # cython: auto_cpdef=True
 
-'''Compatiblity for Python versions.
+"""Compatiblity for Python versions.
 
 Some of this code is "lifted" from CherryPy.
-'''
+"""
 import sys
 from sys import stdout
 from struct import unpack
 
 import json
 
-_encoding = 'UTF-8'
+_encoding = "UTF-8"
 
 if sys.version_info >= (3, 0):
     from io import BytesIO as MemoryIO
+
     xrange = range
 
     def py3_btou(n, encoding=_encoding):
@@ -38,7 +39,7 @@ if sys.version_info >= (3, 0):
         return isinstance(obj, str)
 
     def py3_mk_bits(bits):
-        return bytes([bits & 0xff])
+        return bytes([bits & 0xFF])
 
     def py3_bytes2ints(datum):
         return list(datum)
@@ -58,8 +59,10 @@ if sys.version_info >= (3, 0):
         else:
             return False
 
+
 else:  # Python 2x
     from cStringIO import StringIO as MemoryIO  # noqa
+
     xrange = xrange
 
     def py2_btou(n, encoding=_encoding):
@@ -68,12 +71,12 @@ else:  # Python 2x
     def py2_utob(n, encoding=_encoding):
         return n.encode(encoding)
 
-    _outenc = getattr(stdout, 'encoding', None) or _encoding
+    _outenc = getattr(stdout, "encoding", None) or _encoding
 
     def py2_json_dump(obj, indent):
         kwargs = {}
         if indent is not None:
-            kwargs['indent'] = indent
+            kwargs["indent"] = indent
         json.dump(obj, stdout, encoding=_outenc, **kwargs)
 
     def py2_iterkeys(obj):
@@ -89,13 +92,13 @@ else:  # Python 2x
         return isinstance(obj, basestring)  # noqa
 
     def py2_mk_bits(bits):
-        return chr(bits & 0xff)
+        return chr(bits & 0xFF)
 
     def py2_str2ints(datum):
         return map(lambda x: ord(x), datum)
 
     def py2_fstint(datum):
-        return unpack('!b', datum[0])[0]
+        return unpack("!b", datum[0])[0]
 
     def _readable(file_like):
         try:
@@ -129,6 +132,7 @@ else:  # Python 2x
                 )
         else:
             return False
+
 
 # We do it this way and not just redifine function since Cython do not like it
 if sys.version_info >= (3, 0):

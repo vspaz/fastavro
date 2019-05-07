@@ -14,6 +14,4 @@ extract_logical_type = _schema.extract_logical_type
 load_schema = _schema.load_schema
 parse_schema = _schema.parse_schema
 
-__all__ = [
-    'UnknownType', 'load_schema', 'SchemaParseException', 'parse_schema',
-]
+__all__ = ["UnknownType", "load_schema", "SchemaParseException", "parse_schema"]

@@ -10,7 +10,7 @@ echo
 find . -name '*.pyc' -exec rm {} \;
 
 echo "running flake8"
-flake8 fastavro tests
+flake8 --config=.flake8 fastavro tests
 flake8 --config=.flake8.cython fastavro
 
 check-manifest

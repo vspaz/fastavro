@@ -10,9 +10,7 @@ schema_dict_a = {
     "namespace": "example.avro2",
     "type": "record",
     "name": "evtest",
-    "fields": [
-        {"name": "a", "type": "int"}
-    ]
+    "fields": [{"name": "a", "type": "int"}],
 }
 
 record_a = {"a": 123}
@@ -23,8 +21,8 @@ schema_dict_a_b = {
     "name": "evtest",
     "fields": [
         {"name": "a", "type": "int"},
-        {"name": "b", "type": ["null", "int"], "default": None}
-    ]
+        {"name": "b", "type": ["null", "int"], "default": None},
+    ],
 }
 
 record_a_b = {"a": 234, "b": 345}
@@ -33,10 +31,7 @@ schema_dict_a_c = {
     "namespace": "example.avro2",
     "type": "record",
     "name": "evtest",
-    "fields": [
-        {"name": "a", "type": "int"},
-        {"name": "c", "type": ["null", "int"]}
-    ]
+    "fields": [{"name": "a", "type": "int"}, {"name": "c", "type": ["null", "int"]}],
 }
 
 
@@ -72,17 +67,9 @@ def test_evolution_add_field_without_default():
 
 
 def test_enum_evolution_no_default_failure():
-    original_schema = {
-        "type": "enum",
-        "name": "test",
-        "symbols": ["FOO", "BAR"],
-    }
+    original_schema = {"type": "enum", "name": "test", "symbols": ["FOO", "BAR"]}
 
-    new_schema = {
-        "type": "enum",
-        "name": "test",
-        "symbols": ["BAZ", "BAR"],
-    }
+    new_schema = {"type": "enum", "name": "test", "symbols": ["BAZ", "BAR"]}
 
     original_records = ["FOO"]
 
@@ -95,18 +82,9 @@ def test_enum_evolution_no_default_failure():
 
 
 def test_enum_evolution_using_default():
-    original_schema = {
-        "type": "enum",
-        "name": "test",
-        "symbols": ["A", "B"],
-    }
+    original_schema = {"type": "enum", "name": "test", "symbols": ["A", "B"]}
 
-    new_schema = {
-        "type": "enum",
-        "name": "test",
-        "symbols": ["C", "D"],
-        "default": "C",
-    }
+    new_schema = {"type": "enum", "name": "test", "symbols": ["C", "D"], "default": "C"}
 
     original_records = ["A"]
 

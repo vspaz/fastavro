@@ -8,6 +8,7 @@ from datetime import tzinfo
 class UTCTzinfo(tzinfo):
     """Implementation of abstract base class tzinfo,
     python >= 3.2 can use datetime.timezone.utc instead"""
+
     def utcoffset(self, dt):
         return timedelta(0)
 

@@ -19,8 +19,13 @@ from zlib import compress
 
 from .validation import validate
 from .const import (
-    MCS_PER_HOUR, MCS_PER_MINUTE, MCS_PER_SECOND, MLS_PER_HOUR, MLS_PER_MINUTE,
-    MLS_PER_SECOND, DAYS_SHIFT
+    MCS_PER_HOUR,
+    MCS_PER_MINUTE,
+    MCS_PER_SECOND,
+    MLS_PER_HOUR,
+    MLS_PER_MINUTE,
+    MLS_PER_SECOND,
+    DAYS_SHIFT,
 )
 from .six import utob, MemoryIO, long, iteritems, mk_bits, appendable
 from .read import HEADER_SCHEMA, SYNC_SIZE, MAGIC, reader
@@ -37,7 +42,7 @@ def write_null(fo, datum, schema=None):
 def write_boolean(fo, datum, schema=None):
     """A boolean is written as a single byte whose value is either 0 (false) or
     1 (true)."""
-    fo.write(pack('B', 1 if datum else 0))
+    fo.write(pack("B", 1 if datum else 0))
 
 
 def prepare_timestamp_millis(data, schema):
@@ -45,10 +50,11 @@ def prepare_timestamp_millis(data, schema):
     """
     if isinstance(data, datetime.datetime):
         if data.tzinfo is not None:
-            delta = (data - epoch)
+            delta = data - epoch
             return int(delta.total_seconds() * MLS_PER_SECOND)
         t = int(time.mktime(data.timetuple())) * MLS_PER_SECOND + int(
-            data.microsecond / 1000)
+            data.microsecond / 1000
+        )
         return t
     else:
         return data
@@ -58,10 +64,9 @@ def prepare_timestamp_micros(data, schema):
     """Converts datetime.datetime to int timestamp with microseconds"""
     if isinstance(data, datetime.datetime):
         if data.tzinfo is not None:
-            delta = (data - epoch)
+            delta = data - epoch
             return int(delta.total_seconds() * MCS_PER_SECOND)
-        t = int(time.mktime(data.timetuple())) * MCS_PER_SECOND + \
-            data.microsecond
+        t = int(time.mktime(data.timetuple())) * MCS_PER_SECOND + data.microsecond
         return t
     else:
         return data
@@ -92,8 +97,11 @@ def prepare_time_millis(data, schema):
     """Convert datetime.time to int timestamp with milliseconds"""
     if isinstance(data, datetime.time):
         return int(
-            data.hour * MLS_PER_HOUR + data.minute * MLS_PER_MINUTE
-            + data.second * MLS_PER_SECOND + int(data.microsecond / 1000))
+            data.hour * MLS_PER_HOUR
+            + data.minute * MLS_PER_MINUTE
+            + data.second * MLS_PER_SECOND
+            + int(data.microsecond / 1000)
+        )
     else:
         return data
 
@@ -101,8 +109,12 @@ def prepare_time_millis(data, schema):
 def prepare_time_micros(data, schema):
     """Convert datetime.time to int timestamp with microseconds"""
     if isinstance(data, datetime.time):
-        return long(data.hour * MCS_PER_HOUR + data.minute * MCS_PER_MINUTE
-                    + data.second * MCS_PER_SECOND + data.microsecond)
+        return long(
+            data.hour * MCS_PER_HOUR
+            + data.minute * MCS_PER_MINUTE
+            + data.second * MCS_PER_SECOND
+            + data.microsecond
+        )
     else:
         return data
 
@@ -111,15 +123,14 @@ def prepare_bytes_decimal(data, schema):
     """Convert decimal.Decimal to bytes"""
     if not isinstance(data, decimal.Decimal):
         return data
-    scale = schema.get('scale', 0)
+    scale = schema.get("scale", 0)
 
     # based on https://github.com/apache/avro/pull/82/
 
     sign, digits, exp = data.as_tuple()
 
     if -exp > scale:
-        raise ValueError(
-            'Scale provided in schema does not match the decimal')
+        raise ValueError("Scale provided in schema does not match the decimal")
     delta = exp + scale
     if delta > 0:
         digits = digits + (0,) * delta
@@ -143,7 +154,7 @@ def prepare_bytes_decimal(data, schema):
 
     for index in range(bytes_req - 1, -1, -1):
         bits_to_write = packed_bits >> (8 * index)
-        tmp.write(mk_bits(bits_to_write & 0xff))
+        tmp.write(mk_bits(bits_to_write & 0xFF))
 
     return tmp.getvalue()
 
@@ -152,16 +163,15 @@ def prepare_fixed_decimal(data, schema):
     """Converts decimal.Decimal to fixed length bytes array"""
     if not isinstance(data, decimal.Decimal):
         return data
-    scale = schema.get('scale', 0)
-    size = schema['size']
+    scale = schema.get("scale", 0)
+    size = schema["size"]
 
     # based on https://github.com/apache/avro/pull/82/
 
     sign, digits, exp = data.as_tuple()
 
     if -exp > scale:
-        raise ValueError(
-            'Scale provided in schema does not match the decimal')
+        raise ValueError("Scale provided in schema does not match the decimal")
     delta = exp + scale
     if delta > 0:
         digits = digits + (0,) * delta
@@ -195,13 +205,13 @@ def prepare_fixed_decimal(data, schema):
         unscaled_datum = mask | unscaled_datum
         for index in range(size - 1, -1, -1):
             bits_to_write = unscaled_datum >> (8 * index)
-            tmp.write(mk_bits(bits_to_write & 0xff))
+            tmp.write(mk_bits(bits_to_write & 0xFF))
     else:
         for i in range(offset_bits // 8):
             tmp.write(mk_bits(0))
         for index in range(bytes_req - 1, -1, -1):
             bits_to_write = unscaled_datum >> (8 * index)
-            tmp.write(mk_bits(bits_to_write & 0xff))
+            tmp.write(mk_bits(bits_to_write & 0xFF))
 
     return tmp.getvalue()
 
@@ -211,9 +221,9 @@ def write_int(fo, datum, schema=None):
     """
     datum = (datum << 1) ^ (datum >> 63)
     while (datum & ~0x7F) != 0:
-        fo.write(pack('B', (datum & 0x7f) | 0x80))
+        fo.write(pack("B", (datum & 0x7F) | 0x80))
         datum >>= 7
-    fo.write(pack('B', datum))
+    fo.write(pack("B", datum))
 
 
 write_long = write_int
@@ -223,14 +233,14 @@ def write_float(fo, datum, schema=None):
     """A float is written as 4 bytes.  The float is converted into a 32-bit
     integer using a method equivalent to Java's floatToIntBits and then encoded
     in little-endian format."""
-    fo.write(pack('<f', datum))
+    fo.write(pack("<f", datum))
 
 
 def write_double(fo, datum, schema=None):
     """A double is written as 8 bytes.  The double is converted into a 64-bit
     integer using a method equivalent to Java's doubleToLongBits and then
     encoded in little-endian format.  """
-    fo.write(pack('<d', datum))
+    fo.write(pack("<d", datum))
 
 
 def write_bytes(fo, datum, schema=None):
@@ -248,7 +258,7 @@ def write_utf8(fo, datum, schema=None):
 def write_crc32(fo, bytes):
     """A 4-byte, big-endian CRC32 checksum"""
     data = crc32(bytes) & 0xFFFFFFFF
-    fo.write(pack('>I', data))
+    fo.write(pack(">I", data))
 
 
 def write_fixed(fo, datum, schema=None):
@@ -260,7 +270,7 @@ def write_fixed(fo, datum, schema=None):
 def write_enum(fo, datum, schema):
     """An enum is encoded by a int, representing the zero-based position of
     the symbol in the schema."""
-    index = schema['symbols'].index(datum)
+    index = schema["symbols"].index(datum)
     write_int(fo, index)
 
 
@@ -277,7 +287,7 @@ def write_array(fo, datum, schema):
 
     if len(datum) > 0:
         write_long(fo, len(datum))
-        dtype = schema['items']
+        dtype = schema["items"]
         for item in datum:
             write_data(fo, item, dtype)
     write_long(fo, 0)
@@ -295,7 +305,7 @@ def write_map(fo, datum, schema):
     count in this case is the absolute value of the count written."""
     if len(datum) > 0:
         write_long(fo, len(datum))
-        vtype = schema['values']
+        vtype = schema["values"]
         for key, val in iteritems(datum):
             write_utf8(fo, key)
             write_data(fo, val, vtype)
@@ -310,15 +320,14 @@ def write_union(fo, datum, schema):
     if isinstance(datum, tuple):
         (name, datum) = datum
         for index, candidate in enumerate(schema):
-            if extract_record_type(candidate) == 'record':
-                schema_name = candidate['name']
+            if extract_record_type(candidate) == "record":
+                schema_name = candidate["name"]
             else:
                 schema_name = candidate
             if name == schema_name:
                 break
         else:
-            msg = 'provided union type name %s not found in schema %s' \
-              % (name, schema)
+            msg = "provided union type name %s not found in schema %s" % (name, schema)
             raise ValueError(msg)
     else:
         pytype = type(datum)
@@ -326,10 +335,8 @@ def write_union(fo, datum, schema):
         most_fields = -1
         for index, candidate in enumerate(schema):
             if validate(datum, candidate, raise_errors=False):
-                if extract_record_type(candidate) == 'record':
-                    candidate_fields = set(
-                        f["name"] for f in candidate["fields"]
-                    )
+                if extract_record_type(candidate) == "record":
+                    candidate_fields = set(f["name"] for f in candidate["fields"])
                     datum_fields = set(datum)
                     fields = len(candidate_fields.intersection(datum_fields))
                     if fields > most_fields:
@@ -339,7 +346,7 @@ def write_union(fo, datum, schema):
                     best_match_index = index
                     break
         if best_match_index < 0:
-            msg = '%r (type %s) do not match %s' % (datum, pytype, schema)
+            msg = "%r (type %s) do not match %s" % (datum, pytype, schema)
             raise ValueError(msg)
         index = best_match_index
 
@@ -353,44 +360,41 @@ def write_record(fo, datum, schema):
     that they are declared. In other words, a record is encoded as just the
     concatenation of the encodings of its fields.  Field values are encoded per
     their schema."""
-    for field in schema['fields']:
-        name = field['name']
-        if name not in datum and 'default' not in field and \
-                'null' not in field['type']:
-            raise ValueError('no value and no default for %s' % name)
-        write_data(fo, datum.get(
-            name, field.get('default')), field['type'])
+    for field in schema["fields"]:
+        name = field["name"]
+        if name not in datum and "default" not in field and "null" not in field["type"]:
+            raise ValueError("no value and no default for %s" % name)
+        write_data(fo, datum.get(name, field.get("default")), field["type"])
 
 
 LOGICAL_WRITERS = {
-    'long-timestamp-millis': prepare_timestamp_millis,
-    'long-timestamp-micros': prepare_timestamp_micros,
-    'int-date': prepare_date,
-    'bytes-decimal': prepare_bytes_decimal,
-    'fixed-decimal': prepare_fixed_decimal,
-    'string-uuid': prepare_uuid,
-    'int-time-millis': prepare_time_millis,
-    'long-time-micros': prepare_time_micros,
-
+    "long-timestamp-millis": prepare_timestamp_millis,
+    "long-timestamp-micros": prepare_timestamp_micros,
+    "int-date": prepare_date,
+    "bytes-decimal": prepare_bytes_decimal,
+    "fixed-decimal": prepare_fixed_decimal,
+    "string-uuid": prepare_uuid,
+    "int-time-millis": prepare_time_millis,
+    "long-time-micros": prepare_time_micros,
 }
 
 WRITERS = {
-    'null': write_null,
-    'boolean': write_boolean,
-    'string': write_utf8,
-    'int': write_long,
-    'long': write_long,
-    'float': write_float,
-    'double': write_double,
-    'bytes': write_bytes,
-    'fixed': write_fixed,
-    'enum': write_enum,
-    'array': write_array,
-    'map': write_map,
-    'union': write_union,
-    'error_union': write_union,
-    'record': write_record,
-    'error': write_record,
+    "null": write_null,
+    "boolean": write_boolean,
+    "string": write_utf8,
+    "int": write_long,
+    "long": write_long,
+    "float": write_float,
+    "double": write_double,
+    "bytes": write_bytes,
+    "fixed": write_fixed,
+    "enum": write_enum,
+    "array": write_array,
+    "map": write_map,
+    "union": write_union,
+    "error_union": write_union,
+    "record": write_record,
+    "error": write_record,
 }
 
 
@@ -423,9 +427,9 @@ def write_data(fo, datum, schema):
 
 def write_header(fo, metadata, sync_marker):
     header = {
-        'magic': MAGIC,
-        'meta': {key: utob(value) for key, value in iteritems(metadata)},
-        'sync': sync_marker
+        "magic": MAGIC,
+        "meta": {key: utob(value) for key, value in iteritems(metadata)},
+        "sync": sync_marker,
     }
     write_data(fo, header, HEADER_SCHEMA)
 
@@ -446,10 +450,7 @@ def deflate_write_block(fo, block_bytes):
     fo.write(data)
 
 
-BLOCK_WRITERS = {
-    'null': null_write_block,
-    'deflate': deflate_write_block
-}
+BLOCK_WRITERS = {"null": null_write_block, "deflate": deflate_write_block}
 
 try:
     import snappy
@@ -462,21 +463,22 @@ try:
         fo.write(data)
         write_crc32(fo, block_bytes)
 
-    BLOCK_WRITERS['snappy'] = snappy_write_block
+    BLOCK_WRITERS["snappy"] = snappy_write_block
 except ImportError:
     pass
 
 
 class Writer(object):
-
-    def __init__(self,
-                 fo,
-                 schema,
-                 codec='null',
-                 sync_interval=1000 * SYNC_SIZE,
-                 metadata=None,
-                 validator=None,
-                 sync_marker=None):
+    def __init__(
+        self,
+        fo,
+        schema,
+        codec="null",
+        sync_interval=1000 * SYNC_SIZE,
+        metadata=None,
+        validator=None,
+        sync_marker=None,
+    ):
         self.fo = fo
         self.schema = parse_schema(schema)
         self.validate_fn = validate if validator is True else validator
@@ -507,7 +509,7 @@ class Writer(object):
             self.sync_marker = sync_marker or urandom(SYNC_SIZE)
 
             self.metadata = metadata or {}
-            self.metadata['avro.codec'] = codec
+            self.metadata["avro.codec"] = codec
 
             if isinstance(schema, dict):
                 schema = {
@@ -516,12 +518,12 @@ class Writer(object):
                     if key != "__fastavro_parsed"
                 }
 
-            self.metadata['avro.schema'] = json.dumps(schema)
+            self.metadata["avro.schema"] = json.dumps(schema)
 
             try:
                 self.block_writer = BLOCK_WRITERS[codec]
             except KeyError:
-                raise ValueError('unrecognized codec: %r' % codec)
+                raise ValueError("unrecognized codec: %r" % codec)
 
             write_header(self.fo, self.metadata, self.sync_marker)
 
@@ -555,14 +557,16 @@ class Writer(object):
         self.fo.flush()
 
 
-def writer(fo,
-           schema,
-           records,
-           codec='null',
-           sync_interval=1000 * SYNC_SIZE,
-           metadata=None,
-           validator=None,
-           sync_marker=None):
+def writer(
+    fo,
+    schema,
+    records,
+    codec="null",
+    sync_interval=1000 * SYNC_SIZE,
+    metadata=None,
+    validator=None,
+    sync_marker=None,
+):
     """Write records to fo (stream) according to schema
 
     Parameters
@@ -633,15 +637,7 @@ def writer(fo,
     if isinstance(records, dict):
         raise ValueError('"records" argument should be an iterable, not dict')
 
-    output = Writer(
-        fo,
-        schema,
-        codec,
-        sync_interval,
-        metadata,
-        validator,
-        sync_marker,
-    )
+    output = Writer(fo, schema, codec, sync_interval, metadata, validator, sync_marker)
 
     for record in records:
         output.write(record)

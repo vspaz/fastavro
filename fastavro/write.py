@@ -11,6 +11,4 @@ Writer = _write.Writer
 schemaless_writer = _write.schemaless_writer
 LOGICAL_WRITERS = _write.LOGICAL_WRITERS
 
-__all__ = [
-    'writer', 'Writer', 'schemaless_writer', 'LOGICAL_WRITERS',
-]
+__all__ = ["writer", "Writer", "schemaless_writer", "LOGICAL_WRITERS"]

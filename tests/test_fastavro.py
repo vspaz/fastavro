@@ -16,7 +16,7 @@ from glob import iglob
 
 pytestmark = pytest.mark.usefixtures("clean_schemas")
 
-data_dir = join(abspath(dirname(__file__)), 'avro-files')
+data_dir = join(abspath(dirname(__file__)), "avro-files")
 
 try:
     import snappy  # NOQA
@@ -26,8 +26,8 @@ except ImportError:
     has_snappy = False
 
 NO_DATA = {
-    'class org.apache.avro.tool.TestDataFileTools.zerojsonvalues.avro',
-    'testDataFileMeta.avro',
+    "class org.apache.avro.tool.TestDataFileTools.zerojsonvalues.avro",
+    "testDataFileMeta.avro",
 }
 
 
@@ -63,23 +63,23 @@ class NoSeekMemoryIO(object):
 
 
 def _test_files():
-    for filename in iglob(join(data_dir, '*.avro')):
-        if (not has_snappy) and ('snappy' in filename):
+    for filename in iglob(join(data_dir, "*.avro")):
+        if (not has_snappy) and ("snappy" in filename):
             continue
         yield filename
 
 
-@pytest.mark.parametrize('filename', _test_files())
+@pytest.mark.parametrize("filename", _test_files())
 def test_file(filename):
-    with open(filename, 'rb') as fo:
+    with open(filename, "rb") as fo:
         reader = fastavro.reader(fo)
-        assert hasattr(reader, 'writer_schema'), 'no schema on file'
+        assert hasattr(reader, "writer_schema"), "no schema on file"
 
         if basename(filename) in NO_DATA:
             return
 
         records = list(reader)
-        assert len(records) > 0, 'no records found'
+        assert len(records) > 0, "no records found"
 
     new_file = MemoryIO()
     fastavro.writer(new_file, reader.writer_schema, records, reader.codec)
@@ -87,7 +87,7 @@ def test_file(filename):
 
     new_file = NoSeekMemoryIO(new_file_bytes)
     new_reader = fastavro.reader(new_file)
-    assert hasattr(new_reader, 'writer_schema'), "schema wasn't written"
+    assert hasattr(new_reader, "writer_schema"), "schema wasn't written"
     assert new_reader.writer_schema == reader.writer_schema
     assert new_reader.codec == reader.codec
     new_records = list(new_reader)
@@ -105,142 +105,141 @@ def test_file(filename):
 
 def test_not_avro():
     with pytest.raises(ValueError):
-        with open(__file__, 'rb') as fo:
+        with open(__file__, "rb") as fo:
             fastavro.reader(fo)
 
 
 def test_parse_schema_rejects_undleclared_name():
     try:
-        fastavro.parse_schema({
-            "type": "record",
-            "name": "test_parse_schema_rejects_undleclared_name",
-            "fields": [{
-                "name": "left",
-                "type": "Thinger",
-            }]
-        })
-        assert False, 'Never raised'
+        fastavro.parse_schema(
+            {
+                "type": "record",
+                "name": "test_parse_schema_rejects_undleclared_name",
+                "fields": [{"name": "left", "type": "Thinger"}],
+            }
+        )
+        assert False, "Never raised"
     except fastavro.schema.UnknownType as e:
-        assert 'Thinger' == e.name
+        assert "Thinger" == e.name
 
 
 def test_parse_schema_rejects_unordered_references():
     try:
-        fastavro.parse_schema({
-            "type": "record",
-            "name": "test_parse_schema_rejects_unordered_references",
-            "fields": [{
-                "name": "left",
-                "type": "Thinger"
-            }, {
-                "name": "right",
-                "type": {
-                    "type": "record",
-                    "name": "Thinger",
-                    "fields": [{
-                        "name": "the_thing",
-                        "type": "string"
-                    }]
-                }
-            }]
-        })
-        assert False, 'Never raised'
+        fastavro.parse_schema(
+            {
+                "type": "record",
+                "name": "test_parse_schema_rejects_unordered_references",
+                "fields": [
+                    {"name": "left", "type": "Thinger"},
+                    {
+                        "name": "right",
+                        "type": {
+                            "type": "record",
+                            "name": "Thinger",
+                            "fields": [{"name": "the_thing", "type": "string"}],
+                        },
+                    },
+                ],
+            }
+        )
+        assert False, "Never raised"
     except fastavro.schema.UnknownType as e:
-        assert 'Thinger' == e.name
+        assert "Thinger" == e.name
 
 
 def test_parse_schema_accepts_nested_namespaces():
-    parsed_schema = fastavro.parse_schema({
-        "namespace": "com.example",
-        "name": "Outer",
-        "type": "record",
-        "fields": [{
-            "name": "a",
-            "type": {
-                "type": "record",
-                "name": "Inner",
-                "fields": [{
-                    "name": "the_thing",
-                    "type": "string"
-                }]
-            }
-        }, {
-            "name": "b",
-            # This should resolve to com.example.Inner because of the
-            # `namespace` of the enclosing record.
-            "type": "Inner"
-        }, {
-            "name": "b",
-            "type": "com.example.Inner"
-        }]
-    })
+    parsed_schema = fastavro.parse_schema(
+        {
+            "namespace": "com.example",
+            "name": "Outer",
+            "type": "record",
+            "fields": [
+                {
+                    "name": "a",
+                    "type": {
+                        "type": "record",
+                        "name": "Inner",
+                        "fields": [{"name": "the_thing", "type": "string"}],
+                    },
+                },
+                {
+                    "name": "b",
+                    # This should resolve to com.example.Inner because of the
+                    # `namespace` of the enclosing record.
+                    "type": "Inner",
+                },
+                {"name": "b", "type": "com.example.Inner"},
+            ],
+        }
+    )
     assert "com.example.Inner" == parsed_schema["fields"][0]["type"]["name"]
     assert "com.example.Inner" == parsed_schema["fields"][1]["type"]
 
 
 def test_parse_schema_resolves_references_from_unions():
-    parsed_schema = fastavro.parse_schema({
-        "namespace": "com.other",
-        "name": "Outer",
-        "type": "record",
-        "fields": [{
-            "name": "a",
-            "type": ["null", {
-                "type": "record",
-                "name": "Inner",
-                "fields": [{
-                    "name": "the_thing",
-                    "type": "string"
-                }]
-            }]
-        }, {
-            "name": "b",
-            # This should resolve to com.example.Inner because of the
-            # `namespace` of the enclosing record.
-            "type": ["null", "Inner"]
-        }]
-    })
+    parsed_schema = fastavro.parse_schema(
+        {
+            "namespace": "com.other",
+            "name": "Outer",
+            "type": "record",
+            "fields": [
+                {
+                    "name": "a",
+                    "type": [
+                        "null",
+                        {
+                            "type": "record",
+                            "name": "Inner",
+                            "fields": [{"name": "the_thing", "type": "string"}],
+                        },
+                    ],
+                },
+                {
+                    "name": "b",
+                    # This should resolve to com.example.Inner because of the
+                    # `namespace` of the enclosing record.
+                    "type": ["null", "Inner"],
+                },
+            ],
+        }
+    )
     assert "com.other.Inner" == parsed_schema["fields"][1]["type"][1]
 
 
 def test_parse_schema_accepts_nested_records_from_arrays():
-    parsed_schema = fastavro.parse_schema({
-        "fields": [
-            {
-                "type": {
-                    "items": {
-                        "type": "record",
-                        "fields": [{"type": "string", "name": "text"}],
-                        "name": "Nested"
+    parsed_schema = fastavro.parse_schema(
+        {
+            "fields": [
+                {
+                    "type": {
+                        "items": {
+                            "type": "record",
+                            "fields": [{"type": "string", "name": "text"}],
+                            "name": "Nested",
+                        },
+                        "type": "array",
                     },
-                    "type": "array",
+                    "name": "multiple",
                 },
-                "name": "multiple"
-            },
-            {
-                "type": {
-                    "type": "array",
-                    "items": "Nested"
-                },
-                "name": "single"
-            }
-        ],
-        "type": "record",
-        "name": "test_parse_schema_accepts_nested_records_from_arrays",
-    })
+                {"type": {"type": "array", "items": "Nested"}, "name": "single"},
+            ],
+            "type": "record",
+            "name": "test_parse_schema_accepts_nested_records_from_arrays",
+        }
+    )
     assert "Nested" == parsed_schema["fields"][1]["type"]["items"]
 
 
 def test_compose_schemas():
-    schema_path = join(data_dir, 'Parent.avsc')
+    schema_path = join(data_dir, "Parent.avsc")
     fastavro.schema.load_schema(schema_path)
 
 
 def test_reading_after_writing_with_load_schema():
-    schema_path = join(data_dir, 'Parent.avsc')
+    schema_path = join(data_dir, "Parent.avsc")
     schema = fastavro.schema.load_schema(schema_path)
 
-    records = [{'child': {}, 'child1': {}}]
+    records = [{"child": {}, "child1": {}}]
 
     new_file = MemoryIO()
     fastavro.writer(new_file, schema, records)
@@ -248,9 +247,9 @@ def test_reading_after_writing_with_load_schema():
 
     # Clean the Child and Parent entries so we are forced to get them from the
     # schema
-    del SCHEMA_DEFS['Child']
-    del SCHEMA_DEFS['Child1']
-    del SCHEMA_DEFS['Parent']
+    del SCHEMA_DEFS["Child"]
+    del SCHEMA_DEFS["Child1"]
+    del SCHEMA_DEFS["Parent"]
 
     reader = fastavro.reader(new_file)
     new_records = list(reader)
@@ -258,7 +257,7 @@ def test_reading_after_writing_with_load_schema():
 
 
 def test_missing_schema():
-    schema_path = join(data_dir, 'ParentMissingChild.avsc')
+    schema_path = join(data_dir, "ParentMissingChild.avsc")
     with pytest.raises(fastavro.schema.UnknownType):
         fastavro.schema.load_schema(schema_path)
 
@@ -267,11 +266,9 @@ def test_default_values():
     schema = {
         "type": "record",
         "name": "test_default_values",
-        "fields": [{
-            "name": "default_field",
-            "type": "string",
-            "default": "default_value"
-        }]
+        "fields": [
+            {"name": "default_field", "type": "string", "default": "default_value"}
+        ],
     }
     records = [{}]
 
@@ -283,63 +280,53 @@ def test_nullable_values():
     schema = {
         "type": "record",
         "name": "test_nullable_values",
-        "fields": [{
-            "name": "nullable_field",
-            "type": ["string", "null"]
-        }, {
-            "name": "field",
-            "type": "string"
-        }
-        ]
+        "fields": [
+            {"name": "nullable_field", "type": ["string", "null"]},
+            {"name": "field", "type": "string"},
+        ],
     }
     records = [{"field": "val"}, {"field": "val", "nullable_field": "no_null"}]
 
     new_records = roundtrip(schema, records)
-    assert new_records == [{'nullable_field': None, 'field': 'val'}, {
-        'nullable_field': 'no_null', 'field': 'val'}]
+    assert new_records == [
+        {"nullable_field": None, "field": "val"},
+        {"nullable_field": "no_null", "field": "val"},
+    ]
 
 
 def test_metadata():
-    schema = {
-        "type": "record",
-        "name": "test_metadata",
-        "fields": []
-    }
+    schema = {"type": "record", "name": "test_metadata", "fields": []}
 
     new_file = MemoryIO()
     records = [{}]
-    metadata = {'key': 'value'}
+    metadata = {"key": "value"}
     fastavro.writer(new_file, schema, records, metadata=metadata)
     new_file.seek(0)
     new_reader = fastavro.reader(new_file)
-    assert new_reader.metadata['key'] == metadata['key']
+    assert new_reader.metadata["key"] == metadata["key"]
 
 
 def test_write_union_shortcut():
     schema = {
         "type": "record",
         "name": "A",
-        "fields": [{
-            "name": "a",
-            "type": [
-                {
-                    "type": "record",
-                    "name": "B",
-                    "fields": [{
-                        "name": "b",
-                        "type": "string"
-                    }]
-                },
-                {
-                    "type": "record",
-                    "name": "C",
-                    "fields": [{
-                        "name": "c",
-                        "type": "string"
-                    }]
-                }
-            ]
-        }]
+        "fields": [
+            {
+                "name": "a",
+                "type": [
+                    {
+                        "type": "record",
+                        "name": "B",
+                        "fields": [{"name": "b", "type": "string"}],
+                    },
+                    {
+                        "type": "record",
+                        "name": "C",
+                        "fields": [{"name": "c", "type": "string"}],
+                    },
+                ],
+            }
+        ],
     }
 
     records = [{"a": ("B", {"b": "test"})}]
@@ -351,17 +338,16 @@ def test_repo_caching_issue():
     schema = {
         "type": "record",
         "name": "B",
-        "fields": [{
-            "name": "b",
-            "type": {
-                "type": "record",
-                "name": "C",
-                "fields": [{
-                    "name": "c",
-                    "type": "string"
-                }]
+        "fields": [
+            {
+                "name": "b",
+                "type": {
+                    "type": "record",
+                    "name": "C",
+                    "fields": [{"name": "c", "type": "string"}],
+                },
             }
-        }]
+        ],
     }
 
     records = [{"b": {"c": "test"}}]
@@ -371,27 +357,26 @@ def test_repo_caching_issue():
     other_schema = {
         "name": "A",
         "type": "record",
-        "fields": [{
-            "name": "a",
-            "type": {
-                "type": "record",
-                "name": "B",
-                "fields": [{
-                    "name": "b",
-                    "type": {
-                        "type": "record",
-                        "name": "C",
-                        "fields": [{
-                            "name": "c",
-                            "type": "int"
-                        }]
-                    }
-                }]
-            }
-        }, {
-            "name": "aa",
-            "type": "B"
-        }]
+        "fields": [
+            {
+                "name": "a",
+                "type": {
+                    "type": "record",
+                    "name": "B",
+                    "fields": [
+                        {
+                            "name": "b",
+                            "type": {
+                                "type": "record",
+                                "name": "C",
+                                "fields": [{"name": "c", "type": "int"}],
+                            },
+                        }
+                    ],
+                },
+            },
+            {"name": "aa", "type": "B"},
+        ],
     }
 
     records = [{"a": {"b": {"c": 1}}, "aa": {"b": {"c": 2}}}]
@@ -403,20 +388,17 @@ def test_schema_migration_remove_field():
     schema = {
         "type": "record",
         "name": "test_schema_migration_remove_field",
-        "fields": [{
-            "name": "test",
-            "type": "string",
-        }]
+        "fields": [{"name": "test", "type": "string"}],
     }
 
     new_schema = {
         "type": "record",
         "name": "test_schema_migration_remove_field_new",
-        "fields": []
+        "fields": [],
     }
 
     new_file = MemoryIO()
-    records = [{'test': 'test'}]
+    records = [{"test": "test"}]
     fastavro.writer(new_file, schema, records)
     new_file.seek(0)
     new_reader = fastavro.reader(new_file, new_schema)
@@ -428,17 +410,13 @@ def test_schema_migration_add_default_field():
     schema = {
         "type": "record",
         "name": "test_schema_migration_add_default_field",
-        "fields": []
+        "fields": [],
     }
 
     new_schema = {
         "type": "record",
         "name": "test_schema_migration_add_default_field_new",
-        "fields": [{
-            "name": "test",
-            "type": "string",
-            "default": "default",
-        }]
+        "fields": [{"name": "test", "type": "string", "default": "default"}],
     }
 
     new_file = MemoryIO()
@@ -454,19 +432,13 @@ def test_schema_migration_type_promotion():
     schema = {
         "type": "record",
         "name": "test_schema_migration_type_promotion",
-        "fields": [{
-            "name": "test",
-            "type": ["string", "int"],
-        }]
+        "fields": [{"name": "test", "type": ["string", "int"]}],
     }
 
     new_schema = {
         "type": "record",
         "name": "test_schema_migration_type_promotion_new",
-        "fields": [{
-            "name": "test",
-            "type": ["float", "string"],
-        }]
+        "fields": [{"name": "test", "type": ["float", "string"]}],
     }
 
     new_file = MemoryIO()
@@ -482,25 +454,17 @@ def test_schema_migration_maps_with_union_promotion():
     schema = {
         "type": "record",
         "name": "test_schema_migration_maps_with_union_promotion",
-        "fields": [{
-            "name": "test",
-            "type": {
-                "type": "map",
-                "values": ["string", "int"]
-            },
-        }]
+        "fields": [
+            {"name": "test", "type": {"type": "map", "values": ["string", "int"]}}
+        ],
     }
 
     new_schema = {
         "type": "record",
         "name": "test_schema_migration_maps_with_union_promotion_new",
-        "fields": [{
-            "name": "test",
-            "type": {
-                "type": "map",
-                "values": ["string", "long"]
-            },
-        }]
+        "fields": [
+            {"name": "test", "type": {"type": "map", "values": ["string", "long"]}}
+        ],
     }
 
     new_file = MemoryIO()
@@ -516,25 +480,17 @@ def test_schema_migration_array_with_union_promotion():
     schema = {
         "type": "record",
         "name": "test_schema_migration_array_with_union_promotion",
-        "fields": [{
-            "name": "test",
-            "type": {
-                "type": "array",
-                "items": ["boolean", "long"]
-            },
-        }]
+        "fields": [
+            {"name": "test", "type": {"type": "array", "items": ["boolean", "long"]}}
+        ],
     }
 
     new_schema = {
         "type": "record",
         "name": "test_schema_migration_array_with_union_promotion_new",
-        "fields": [{
-            "name": "test",
-            "type": {
-                "type": "array",
-                "items": ["string", "float"]
-            },
-        }]
+        "fields": [
+            {"name": "test", "type": {"type": "array", "items": ["string", "float"]}}
+        ],
     }
 
     new_file = MemoryIO()
@@ -550,19 +506,13 @@ def test_schema_migration_writer_union():
     schema = {
         "type": "record",
         "name": "test_schema_migration_writer_union",
-        "fields": [{
-            "name": "test",
-            "type": ["string", "int"]
-        }]
+        "fields": [{"name": "test", "type": ["string", "int"]}],
     }
 
     new_schema = {
         "type": "record",
         "name": "test_schema_migration_writer_union_new",
-        "fields": [{
-            "name": "test",
-            "type": "int"
-        }]
+        "fields": [{"name": "test", "type": "int"}],
     }
 
     new_file = MemoryIO()
@@ -578,19 +528,13 @@ def test_schema_migration_reader_union():
     schema = {
         "type": "record",
         "name": "test_schema_migration_reader_union",
-        "fields": [{
-            "name": "test",
-            "type": "int"
-        }]
+        "fields": [{"name": "test", "type": "int"}],
     }
 
     new_schema = {
         "type": "record",
         "name": "test_schema_migration_reader_union_new",
-        "fields": [{
-            "name": "test",
-            "type": ["string", "int"]
-        }]
+        "fields": [{"name": "test", "type": ["string", "int"]}],
     }
 
     new_file = MemoryIO()
@@ -606,19 +550,13 @@ def test_schema_migration_union_failure():
     schema = {
         "type": "record",
         "name": "test_schema_migration_union_failure",
-        "fields": [{
-            "name": "test",
-            "type": "boolean"
-        }]
+        "fields": [{"name": "test", "type": "boolean"}],
     }
 
     new_schema = {
         "type": "record",
         "name": "test_schema_migration_union_failure_new",
-        "fields": [{
-            "name": "test",
-            "type": ["string", "int"]
-        }]
+        "fields": [{"name": "test", "type": ["string", "int"]}],
     }
 
     new_file = MemoryIO()
@@ -635,25 +573,17 @@ def test_schema_migration_array_failure():
     schema = {
         "type": "record",
         "name": "test_schema_migration_array_failure",
-        "fields": [{
-            "name": "test",
-            "type": {
-                "type": "array",
-                "items": ["string", "int"]
-            },
-        }]
+        "fields": [
+            {"name": "test", "type": {"type": "array", "items": ["string", "int"]}}
+        ],
     }
 
     new_schema = {
         "type": "record",
         "name": "test_schema_migration_array_failure_new",
-        "fields": [{
-            "name": "test",
-            "type": {
-                "type": "array",
-                "items": ["string", "boolean"]
-            },
-        }]
+        "fields": [
+            {"name": "test", "type": {"type": "array", "items": ["string", "boolean"]}}
+        ],
     }
 
     new_file = MemoryIO()
@@ -670,25 +600,13 @@ def test_schema_migration_maps_failure():
     schema = {
         "type": "record",
         "name": "test_schema_migration_maps_failure",
-        "fields": [{
-            "name": "test",
-            "type": {
-                "type": "map",
-                "values": "string"
-            },
-        }]
+        "fields": [{"name": "test", "type": {"type": "map", "values": "string"}}],
     }
 
     new_schema = {
         "type": "record",
         "name": "test_schema_migration_maps_failure_new",
-        "fields": [{
-            "name": "test",
-            "type": {
-                "type": "map",
-                "values": "long"
-            },
-        }]
+        "fields": [{"name": "test", "type": {"type": "map", "values": "long"}}],
     }
 
     new_file = MemoryIO()
@@ -704,17 +622,10 @@ def test_schema_migration_schema_mismatch():
     schema = {
         "type": "record",
         "name": "test_schema_migration_schema_mismatch",
-        "fields": [{
-            "name": "test",
-            "type": "string",
-        }]
+        "fields": [{"name": "test", "type": "string"}],
     }
 
-    new_schema = {
-        "type": "enum",
-        "name": "test",
-        "symbols": ["FOO", "BAR"],
-    }
+    new_schema = {"type": "enum", "name": "test", "symbols": ["FOO", "BAR"]}
 
     new_file = MemoryIO()
     records = [{"test": "test"}]
@@ -730,51 +641,45 @@ def test_empty():
     with pytest.raises(ValueError) as exc:
         fastavro.reader(io)
 
-    assert 'cannot read header - is it an avro file?' in str(exc)
+    assert "cannot read header - is it an avro file?" in str(exc)
 
 
 def test_no_default():
     io = MemoryIO()
     schema = {
-        'type': 'record',
-        'name': 'test',
-        'fields': [
-            {'type': 'boolean', 'name': 'a'}
-        ],
+        "type": "record",
+        "name": "test",
+        "fields": [{"type": "boolean", "name": "a"}],
     }
     with pytest.raises(ValueError) as exc:
         fastavro.writer(io, schema, [{}])
 
-    assert 'no value and no default' in str(exc)
+    assert "no value and no default" in str(exc)
 
 
 def test_is_avro_str():
-    for path in iglob('%s/*.avro' % data_dir):
+    for path in iglob("%s/*.avro" % data_dir):
         assert fastavro.is_avro(path)
     assert not fastavro.is_avro(__file__)
 
 
 def test_is_avro_fo():
-    for path in iglob('%s/*.avro' % data_dir):
-        with open(path, 'rb') as fp:
+    for path in iglob("%s/*.avro" % data_dir):
+        with open(path, "rb") as fp:
             assert fastavro.is_avro(fp)
-    with open(__file__, 'rb') as fp:
+    with open(__file__, "rb") as fp:
         assert not fastavro.is_avro(fp)
 
 
 def test_write_long_union_type():
     schema = {
-        'name': 'test_name',
-        'namespace': 'test',
-        'type': 'record',
-        'fields': [
-            {'name': 'time', 'type': ['null', 'long']},
-        ],
+        "name": "test_name",
+        "namespace": "test",
+        "type": "record",
+        "fields": [{"name": "time", "type": ["null", "long"]}],
     }
 
-    records = [
-        {u'time': 809066167221092352},
-    ]
+    records = [{"time": 809066167221092352}]
 
     assert records == roundtrip(schema, records)
 
@@ -785,14 +690,14 @@ def test_cython_python():
     # one. This is bad, because the pure Python version is faster in Pypy,
     # while the Cython version is faster in CPython. This test verifies the
     # correct reader and writer implementations are used.
-    if hasattr(sys, 'pypy_version_info'):
+    if hasattr(sys, "pypy_version_info"):
         # Pypy should not use Cython.
-        assert not hasattr(_reader, 'CYTHON_MODULE')
-        assert not hasattr(_writer, 'CYTHON_MODULE')
+        assert not hasattr(_reader, "CYTHON_MODULE")
+        assert not hasattr(_writer, "CYTHON_MODULE")
     else:
         # CPython should use Cython.
-        assert getattr(_reader, 'CYTHON_MODULE')
-        assert getattr(_writer, 'CYTHON_MODULE')
+        assert getattr(_reader, "CYTHON_MODULE")
+        assert getattr(_writer, "CYTHON_MODULE")
 
 
 def test_writer_class_flush_end(tmpdir):
@@ -805,24 +710,15 @@ def test_writer_class_flush_end(tmpdir):
         "name": "Test",
         "namespace": "test",
         "fields": [
-            {
-                "name": "field1",
-                "type": {"type": "string"}
-            },
-            {
-                "name": "field2",
-                "type": {"type": "int"}
-            }
-        ]
+            {"name": "field1", "type": {"type": "string"}},
+            {"name": "field2", "type": {"type": "int"}},
+        ],
     }
-    records = [
-        {"field1": "test1", "field2": -1},
-        {"field1": "test2", "field2": 5}
-    ]
+    records = [{"field1": "test1", "field2": -1}, {"field1": "test2", "field2": 5}]
 
-    temp_path = tmpdir.join('test_writer_class.avro')
-    with temp_path.open('wb') as fo:
-        w = Writer(fo, schema, codec='deflate')
+    temp_path = tmpdir.join("test_writer_class.avro")
+    with temp_path.open("wb") as fo:
+        w = Writer(fo, schema, codec="deflate")
 
         # Creating the Writer adds the Avro file header. Get file size with
         # header only.
@@ -842,7 +738,7 @@ def test_writer_class_flush_end(tmpdir):
         assert fo.tell() > size_with_header_only
 
     # Read the records to verify they were written correctly.
-    new_reader = fastavro.reader(temp_path.open('rb'))
+    new_reader = fastavro.reader(temp_path.open("rb"))
     new_records = list(new_reader)
     assert new_records == records
 
@@ -858,24 +754,15 @@ def test_writer_class_sync_interval_automatic_flush(tmpdir):
         "name": "Test",
         "namespace": "test",
         "fields": [
-            {
-                "name": "field1",
-                "type": {"type": "string"}
-            },
-            {
-                "name": "field2",
-                "type": {"type": "int"}
-            }
-        ]
+            {"name": "field1", "type": {"type": "string"}},
+            {"name": "field2", "type": {"type": "int"}},
+        ],
     }
-    records = [
-        {"field1": "test1", "field2": -1},
-        {"field1": "test2", "field2": 5}
-    ]
+    records = [{"field1": "test1", "field2": -1}, {"field1": "test2", "field2": 5}]
 
-    temp_path = tmpdir.join('test_writer_class.avro')
-    with temp_path.open('wb') as fo:
-        w = Writer(fo, schema, codec='deflate', sync_interval=0)
+    temp_path = tmpdir.join("test_writer_class.avro")
+    with temp_path.open("wb") as fo:
+        w = Writer(fo, schema, codec="deflate", sync_interval=0)
 
         # Creating the Writer adds the Avro file header. Get file size with
         # header only.
@@ -896,7 +783,7 @@ def test_writer_class_sync_interval_automatic_flush(tmpdir):
         assert fo.tell() == file_size_history[-1]
 
     # Read the records to verify they were written correctly.
-    new_reader = fastavro.reader(temp_path.open('rb'))
+    new_reader = fastavro.reader(temp_path.open("rb"))
     new_records = list(new_reader)
     assert new_records == records
 
@@ -915,12 +802,7 @@ def test_writer_class_split_files(tmpdir):
         "type": "record",
         "name": "Test",
         "namespace": "test",
-        "fields": [
-            {
-                "name": "field",
-                "type": {"type": "string"}
-            }
-        ]
+        "fields": [{"name": "field", "type": {"type": "string"}}],
     }
     records = []
 
@@ -930,14 +812,15 @@ def test_writer_class_split_files(tmpdir):
         writer_.write(record)
 
     temp_paths = [
-        tmpdir.join('test_writer_class1.avro'),
-        tmpdir.join('test_writer_class2.avro')]
+        tmpdir.join("test_writer_class1.avro"),
+        tmpdir.join("test_writer_class2.avro"),
+    ]
     interim_record_counts = []
 
     # First file: Write records until block_count goes back to 0 for the second
     # time.
-    with temp_paths[0].open('wb') as fo:
-        w = Writer(fo, schema, codec='deflate')
+    with temp_paths[0].open("wb") as fo:
+        w = Writer(fo, schema, codec="deflate")
         _append_record(w)
         while w.block_count > 0:
             _append_record(w)
@@ -948,8 +831,8 @@ def test_writer_class_split_files(tmpdir):
     interim_record_counts.append(len(records))
 
     # Second file: 100 records
-    with temp_paths[1].open('wb') as fo:
-        w = Writer(fo, schema, codec='deflate')
+    with temp_paths[1].open("wb") as fo:
+        w = Writer(fo, schema, codec="deflate")
         for i in range(100):
             _append_record(w)
         w.flush()
@@ -961,7 +844,7 @@ def test_writer_class_split_files(tmpdir):
     new_records = []
     new_interim_record_counts = []
     for temp_path in temp_paths:
-        new_reader = fastavro.reader(temp_path.open('rb'))
+        new_reader = fastavro.reader(temp_path.open("rb"))
         new_records += list(new_reader)
         new_interim_record_counts.append(len(new_records))
     assert new_records == records
@@ -971,44 +854,38 @@ def test_writer_class_split_files(tmpdir):
 def test_union_records():
     #
     schema = {
-        'name': 'test_name',
-        'namespace': 'test',
-        'type': 'record',
-        'fields': [
+        "name": "test_name",
+        "namespace": "test",
+        "type": "record",
+        "fields": [
             {
-                'name': 'val',
-                'type': [
+                "name": "val",
+                "type": [
                     {
-                        'name': 'a',
-                        'namespace': 'common',
-                        'type': 'record',
-                        'fields': [
-                            {'name': 'x', 'type': 'int'},
-                            {'name': 'y', 'type': 'int'},
+                        "name": "a",
+                        "namespace": "common",
+                        "type": "record",
+                        "fields": [
+                            {"name": "x", "type": "int"},
+                            {"name": "y", "type": "int"},
                         ],
                     },
                     {
-                        'name': 'b',
-                        'namespace': 'common',
-                        'type': 'record',
-                        'fields': [
-                            {'name': 'x', 'type': 'int'},
-                            {'name': 'y', 'type': 'int'},
-                            {'name': 'z', 'type': ['null', 'int']},
+                        "name": "b",
+                        "namespace": "common",
+                        "type": "record",
+                        "fields": [
+                            {"name": "x", "type": "int"},
+                            {"name": "y", "type": "int"},
+                            {"name": "z", "type": ["null", "int"]},
                         ],
-                    }
-                ]
+                    },
+                ],
             }
-        ]
+        ],
     }
 
-    data = [{
-        'val': {
-            'x': 3,
-            'y': 4,
-            'z': 5,
-        }
-    }]
+    data = [{"val": {"x": 3, "y": 4, "z": 5}}]
 
     assert data == roundtrip(schema, data)
 
@@ -1022,12 +899,7 @@ def test_ordered_dict_record():
         "type": "record",
         "name": "Test",
         "namespace": "test",
-        "fields": [
-            {
-                "name": "field",
-                "type": {"type": "string"}
-            }
-        ]
+        "fields": [{"name": "field", "type": {"type": "string"}}],
     }
 
     record = OrderedDict()
@@ -1046,13 +918,9 @@ def test_ordered_dict_map():
     schema = {
         "type": "record",
         "name": "test_ordered_dict_map",
-        "fields": [{
-            "name": "test",
-            "type": {
-                "type": "map",
-                "values": ["string", "int"]
-            },
-        }]
+        "fields": [
+            {"name": "test", "type": {"type": "map", "values": ["string", "int"]}}
+        ],
     }
 
     map_ = OrderedDict()
@@ -1063,8 +931,7 @@ def test_ordered_dict_map():
 
 
 @pytest.mark.skipif(
-    not hasattr(_writer, 'CYTHON_MODULE'),
-    reason='Cython-specific test'
+    not hasattr(_writer, "CYTHON_MODULE"), reason="Cython-specific test"
 )
 def test_regular_vs_ordered_dict_record_typeerror():
     """
@@ -1076,18 +943,13 @@ def test_regular_vs_ordered_dict_record_typeerror():
         "type": "record",
         "name": "Test",
         "namespace": "test",
-        "fields": [
-            {
-                "name": "field",
-                "type": {"type": "int"}
-            }
-        ]
+        "fields": [{"name": "field", "type": {"type": "int"}}],
     }
 
     # Test with two different bad records. One is a regular dict, and the other
     # is an OrderedDict. Both have a bad value (string where the schema
     # declares an int).
-    test_records = [{'field': 'foobar'}]
+    test_records = [{"field": "foobar"}]
     record = OrderedDict()
     record["field"] = "foobar"
     test_records.append(record)
@@ -1096,19 +958,15 @@ def test_regular_vs_ordered_dict_record_typeerror():
         # For the regular dict, fails by reraising an error accessing
         # 'd_datum', a variable that only gets a value if the record is an
         # actual dict.
-        [
-            'write_data(fo, d_datum.get('
-        ],
+        ["write_data(fo, d_datum.get("],
         # For the OrderedDict, fails directly when accessing 'datum', the
         # variable that is used if the record is *not* an actual dict.
-        [
-            'write_data(fo, datum.get('
-        ]
+        ["write_data(fo, datum.get("],
     ]
 
     for test_record, expected_write_record_stack_trace in zip(
-            test_records,
-            expected_write_record_stack_traces):
+        test_records, expected_write_record_stack_traces
+    ):
         new_file = MemoryIO()
         records = [test_record]
         try:
@@ -1117,14 +975,12 @@ def test_regular_vs_ordered_dict_record_typeerror():
         except TypeError:
             _, _, tb = sys.exc_info()
             stack = traceback.extract_tb(tb)
-            filtered_stack = [
-                frame[3] for frame in stack if 'write_record' in frame[2]]
+            filtered_stack = [frame[3] for frame in stack if "write_record" in frame[2]]
             assert filtered_stack == expected_write_record_stack_trace
 
 
 @pytest.mark.skipif(
-    not hasattr(_writer, 'CYTHON_MODULE'),
-    reason='Cython-specific test'
+    not hasattr(_writer, "CYTHON_MODULE"), reason="Cython-specific test"
 )
 def test_regular_vs_ordered_dict_map_typeerror():
     """
@@ -1135,22 +991,16 @@ def test_regular_vs_ordered_dict_map_typeerror():
     schema = {
         "type": "record",
         "name": "test_regular_vs_ordered_dict_map_typeerror",
-        "fields": [{
-            "name": "test",
-            "type": {
-                "type": "map",
-                "values": "int"
-            },
-        }]
+        "fields": [{"name": "test", "type": {"type": "map", "values": "int"}}],
     }
 
     # Test with two different bad records. One is a regular dict, and the other
     # is an OrderedDict. Both have a bad value (string where the schema
     # declares an int).
-    test_records = [{'test': {'foo': 'bar'}}]
+    test_records = [{"test": {"foo": "bar"}}]
     map_ = OrderedDict()
     map_["foo"] = "bar"
-    test_records.append({'test': map_})
+    test_records.append({"test": map_})
 
     filtered_stacks = []
     for test_record in test_records:
@@ -1162,8 +1012,7 @@ def test_regular_vs_ordered_dict_map_typeerror():
         except TypeError:
             _, _, tb = sys.exc_info()
             stack = traceback.extract_tb(tb)
-            filtered_stack = [
-                frame[1] for frame in stack if 'write_map' in frame[2]]
+            filtered_stack = [frame[1] for frame in stack if "write_map" in frame[2]]
             filtered_stacks.append(filtered_stack)
 
     # Because of the special-case code for dicts, the two stack traces should
@@ -1173,33 +1022,22 @@ def test_regular_vs_ordered_dict_map_typeerror():
 
 
 def test_write_union_tuple_primitive():
-    '''
+    """
     Test that when we can use tuple style of writing unions
     (see function `write_union` in `_write`) with primitives
      not only with records.
-    '''
+    """
 
     schema = {
-        'name': 'test_name',
-        'namespace': 'test',
-        'type': 'record',
-        'fields': [
-            {
-                'name': 'val',
-                'type': ['string', 'int']
-            }
-        ]
+        "name": "test_name",
+        "namespace": "test",
+        "type": "record",
+        "fields": [{"name": "val", "type": ["string", "int"]}],
     }
 
-    data = [
-        {"val": ("int", 1)},
-        {"val": ("string", "string")},
-    ]
+    data = [{"val": ("int", 1)}, {"val": ("string", "string")}]
 
-    expected_data = [
-        {"val": 1},
-        {"val": "string"},
-    ]
+    expected_data = [{"val": 1}, {"val": "string"}]
 
     new_file = MemoryIO()
     fastavro.writer(new_file, schema, data)
@@ -1215,39 +1053,44 @@ def test_doubles_set_to_zero_on_windows():
     """https://github.com/fastavro/fastavro/issues/154"""
 
     schema = {
-        'doc': 'A weather reading.',
-        'name': 'Weather',
-        'namespace': 'test',
-        'type': 'record',
-        'fields': [
-            {'name': 'station', 'type': 'string'},
-            {'name': 'time', 'type': 'long'},
-            {'name': 'temp', 'type': 'int'},
-            {'name': 'test_float', 'type': 'double'}
-        ]
+        "doc": "A weather reading.",
+        "name": "Weather",
+        "namespace": "test",
+        "type": "record",
+        "fields": [
+            {"name": "station", "type": "string"},
+            {"name": "time", "type": "long"},
+            {"name": "temp", "type": "int"},
+            {"name": "test_float", "type": "double"},
+        ],
     }
 
-    records = [{
-        'station': '011990-99999',
-        'temp': 0,
-        'test_float': 0.21334215134123513,
-        'time': -714214260,
-    }, {
-        'station': '011990-99999',
-        'temp': 22,
-        'test_float': 0.21334215134123513,
-        'time': -714213259,
-    }, {
-        'station': '011990-99999',
-        'temp': -11,
-        'test_float': 0.21334215134123513,
-        'time': -714210269,
-    }, {
-        'station': '012650-99999',
-        'temp': 111,
-        'test_float': 0.21334215134123513,
-        'time': -714208170,
-    }]
+    records = [
+        {
+            "station": "011990-99999",
+            "temp": 0,
+            "test_float": 0.21334215134123513,
+            "time": -714214260,
+        },
+        {
+            "station": "011990-99999",
+            "temp": 22,
+            "test_float": 0.21334215134123513,
+            "time": -714213259,
+        },
+        {
+            "station": "011990-99999",
+            "temp": -11,
+            "test_float": 0.21334215134123513,
+            "time": -714210269,
+        },
+        {
+            "station": "012650-99999",
+            "temp": 111,
+            "test_float": 0.21334215134123513,
+            "time": -714208170,
+        },
+    ]
 
     assert records == roundtrip(schema, records)
 
@@ -1256,27 +1099,18 @@ def test_string_not_treated_as_array():
     """https://github.com/fastavro/fastavro/issues/166"""
 
     schema = {
-        'type': 'record',
-        'fields': [{
-            'name': 'description',
-            "type": [
-                "null",
-                {
-                    "type": "array",
-                    "items": "string"
-                },
-                "string"
-            ],
-        }],
+        "type": "record",
+        "fields": [
+            {
+                "name": "description",
+                "type": ["null", {"type": "array", "items": "string"}, "string"],
+            }
+        ],
         "name": "description",
-        "doc": "A description of the thing."
+        "doc": "A description of the thing.",
     }
 
-    records = [{
-        'description': 'value',
-    }, {
-        'description': ['an', 'array']
-    }]
+    records = [{"description": "value"}, {"description": ["an", "array"]}]
 
     assert records == roundtrip(schema, records)
 
@@ -1288,26 +1122,19 @@ def test_schema_is_custom_dict_type():
         pass
 
     schema = {
-        'type': 'record',
-        'fields': [{
-            'name': 'description',
-            "type": [
-                "null",
-                {
-                    "type": "array",
-                    "items": "string"
-                },
-                "string"
-            ],
-        }],
+        "type": "record",
+        "fields": [
+            {
+                "name": "description",
+                "type": ["null", {"type": "array", "items": "string"}, "string"],
+            }
+        ],
         "name": "description",
-        "doc": "A description of the thing."
+        "doc": "A description of the thing.",
     }
     other_type_schema = CustomDict(schema)
 
-    record = {
-        'description': 'value',
-    }
+    record = {"description": "value"}
 
     new_file = MemoryIO()
     fastavro.schemaless_writer(new_file, schema, record)
@@ -1318,18 +1145,13 @@ def test_schema_is_custom_dict_type():
 
 def test_long_bounds():
     schema = {
-        'name': 'test_long_bounds',
-        'namespace': 'test',
-        'type': 'record',
-        'fields': [
-            {'name': 'time', 'type': 'long'},
-        ],
+        "name": "test_long_bounds",
+        "namespace": "test",
+        "type": "record",
+        "fields": [{"name": "time", "type": "long"}],
     }
 
-    records = [
-        {'time': (1 << 63) - 1},
-        {'time': -(1 << 63)},
-    ]
+    records = [{"time": (1 << 63) - 1}, {"time": -(1 << 63)}]
 
     assert records == roundtrip(schema, records)
 
@@ -1340,14 +1162,14 @@ def test_py37_runtime_error():
 
     See https://www.python.org/dev/peps/pep-0479/
     """
-    weather_file = join(data_dir, 'weather.avro')
+    weather_file = join(data_dir, "weather.avro")
 
     zip_io = MemoryIO()
-    with zipfile.ZipFile(zip_io, mode='w') as zio:
-        zio.write(weather_file, arcname='weather')
+    with zipfile.ZipFile(zip_io, mode="w") as zio:
+        zio.write(weather_file, arcname="weather")
 
     with zipfile.ZipFile(zip_io) as zio:
-        with zio.open('weather') as fo:
+        with zio.open("weather") as fo:
             # Need to read fo into a bytes buffer for python versions less
             # than 3.7
             reader = fastavro.reader(MemoryIO(fo.read()))
@@ -1358,10 +1180,7 @@ def test_eof_error():
     schema = {
         "type": "record",
         "name": "test_eof_error",
-        "fields": [{
-            "name": "test",
-            "type": "float",
-        }]
+        "fields": [{"name": "test", "type": "float"}],
     }
 
     new_file = MemoryIO()
@@ -1397,41 +1216,28 @@ def test_write_union_tuple_uses_namespaced_name():
                         "name": "A",
                         "namespace": "test",
                         "type": "record",
-                        "fields": [
-                            {"name": "field", "type": "int"},
-                        ],
+                        "fields": [{"name": "field", "type": "int"}],
                     },
                     {
                         "name": "B",
                         "namespace": "test",
                         "type": "record",
-                        "fields": [
-                            {"name": "field", "type": "string"},
-                        ],
-                    }
-                ]
+                        "fields": [{"name": "field", "type": "string"}],
+                    },
+                ],
             }
-        ]
+        ],
     }
 
-    expected_data = [
-        {"val": {"field": 1}},
-        {"val": {"field": "string"}},
-    ]
+    expected_data = [{"val": {"field": 1}}, {"val": {"field": "string"}}]
 
-    data = [
-        {"val": ("A", {"field": 1})},
-        {"val": ("B", {"field": "string"})},
-    ]
+    data = [{"val": ("A", {"field": 1})}, {"val": ("B", {"field": "string"})}]
 
     # The given data doesn't use the namespaced name and should fail
     with pytest.raises(ValueError):
         assert expected_data == roundtrip(schema, data)
 
-    data = [
-        {"val": ("test.A", {"field": 1})},
-        {"val": ("test.B", {"field": "string"})},
-    ]
+    data = [{"val": ("test.A", {"field": 1})}, {"val": ("test.B", {"field": "string"})}]
 
     # This passes because it uses the namespaced name
     assert expected_data == roundtrip(schema, data)
@@ -1440,40 +1246,39 @@ def test_write_union_tuple_uses_namespaced_name():
 def test_passing_same_schema_to_reader():
     """https://github.com/fastavro/fastavro/issues/244"""
     schema = {
-        'namespace': 'test.avro.training',
-        'name': 'SomeMessage',
-        'type': 'record',
-        'fields': [{
-            'name': 'is_error',
-            'type': 'boolean',
-            'default': False,
-        }, {
-            'name': 'outcome',
-            'type': [{
-                'type': 'record',
-                'name': 'SomeMessage',
-                'fields': [],
-            }, {
-                'type': 'record',
-                'name': 'ErrorRecord',
-                'fields': [{
-                    'name': 'errors',
-                    'type': {'type': 'map', 'values': 'string'},
-                    'doc': 'doc',
-                }]
-            }]
-        }]
+        "namespace": "test.avro.training",
+        "name": "SomeMessage",
+        "type": "record",
+        "fields": [
+            {"name": "is_error", "type": "boolean", "default": False},
+            {
+                "name": "outcome",
+                "type": [
+                    {"type": "record", "name": "SomeMessage", "fields": []},
+                    {
+                        "type": "record",
+                        "name": "ErrorRecord",
+                        "fields": [
+                            {
+                                "name": "errors",
+                                "type": {"type": "map", "values": "string"},
+                                "doc": "doc",
+                            }
+                        ],
+                    },
+                ],
+            },
+        ],
     }
 
-    records = [{
-        'is_error': True,
-        'outcome': {
-            'errors': {
-                'field_1': 'some_message',
-                'field_2': 'some_other_message'
-            }
+    records = [
+        {
+            "is_error": True,
+            "outcome": {
+                "errors": {"field_1": "some_message", "field_2": "some_other_message"}
+            },
         }
-    }]
+    ]
 
     assert records == roundtrip(schema, records, pass_schema_to_reader=True)
 
@@ -1481,18 +1286,13 @@ def test_passing_same_schema_to_reader():
 def test_helpful_error_when_a_single_record_is_passed_to_writer():
     """https://github.com/fastavro/fastavro/issues/254"""
     schema = {
-        'namespace': 'namespace',
-        'name': 'name',
-        'type': 'record',
-        'fields': [{
-            'name': 'is_error',
-            'type': 'boolean',
-        }]
+        "namespace": "namespace",
+        "name": "name",
+        "type": "record",
+        "fields": [{"name": "is_error", "type": "boolean"}],
     }
 
-    record = {
-        'is_error': True,
-    }
+    record = {"is_error": True}
 
     new_file = MemoryIO()
     with pytest.raises(ValueError) as exc:
@@ -1503,83 +1303,78 @@ def test_helpful_error_when_a_single_record_is_passed_to_writer():
 
 def test_embedded_records_get_namespaced_correctly():
     schema = {
-        'namespace': 'test',
-        'name': 'OuterName',
-        'type': 'record',
-        'fields': [{
-            'name': 'data',
-            'type': [{
-                'type': 'record',
-                'name': 'UUID',
-                'fields': [{
-                    'name': 'uuid',
-                    'type': 'string'
-                }]
-            }, {
-                'type': 'record',
-                'name': 'Abstract',
-                'fields': [{
-                    'name': 'uuid',
-                    'type': 'UUID',
-                }],
-            }, {
-                'type': 'record',
-                'name': 'Concrete',
-                'fields': [{
-                    'name': 'abstract',
-                    'type': 'Abstract'
-                }, {
-                    'name': 'custom',
-                    'type': 'string',
-                }],
-            }]
-        }]
+        "namespace": "test",
+        "name": "OuterName",
+        "type": "record",
+        "fields": [
+            {
+                "name": "data",
+                "type": [
+                    {
+                        "type": "record",
+                        "name": "UUID",
+                        "fields": [{"name": "uuid", "type": "string"}],
+                    },
+                    {
+                        "type": "record",
+                        "name": "Abstract",
+                        "fields": [{"name": "uuid", "type": "UUID"}],
+                    },
+                    {
+                        "type": "record",
+                        "name": "Concrete",
+                        "fields": [
+                            {"name": "abstract", "type": "Abstract"},
+                            {"name": "custom", "type": "string"},
+                        ],
+                    },
+                ],
+            }
+        ],
     }
 
-    records = [{
-        'data': {
-            'abstract': {
-                'uuid': {'uuid': 'some_uuid'}
-            },
-            'custom': 'some_string'
-        }
-    }]
+    records = [
+        {"data": {"abstract": {"uuid": {"uuid": "some_uuid"}}, "custom": "some_string"}}
+    ]
 
     assert records == roundtrip(schema, records)
 
 
 def test_null_defaults_are_not_used():
     """https://github.com/fastavro/fastavro/issues/272"""
-    schema = [{
-        "type": "record",
-        "name": "A",
-        "fields": [{"name": "foo", "type": ["string", "null"]}]
-    }, {
-        "type": "record",
-        "name": "B",
-        "fields": [{"name": "bar", "type": ["string", "null"]}]
-    }, {
-        "type": "record",
-        "name": "AOrB",
-        "fields": [{"name": "entity", "type": ["A", "B"]}]
-    }]
+    schema = [
+        {
+            "type": "record",
+            "name": "A",
+            "fields": [{"name": "foo", "type": ["string", "null"]}],
+        },
+        {
+            "type": "record",
+            "name": "B",
+            "fields": [{"name": "bar", "type": ["string", "null"]}],
+        },
+        {
+            "type": "record",
+            "name": "AOrB",
+            "fields": [{"name": "entity", "type": ["A", "B"]}],
+        },
+    ]
 
-    datum_to_read = {'entity': {'foo': 'this is an instance of schema A'}}
+    datum_to_read = {"entity": {"foo": "this is an instance of schema A"}}
 
     assert [datum_to_read] == roundtrip(schema, [datum_to_read])
 
 
 def test_union_schema_ignores_extra_fields():
     """https://github.com/fastavro/fastavro/issues/274"""
-    schema = [{
-        "type": "record",
-        "name": "A",
-        "fields": [{"name": "name", "type": "string"}]
-    }, {
-        "type": "record",
-        "name": "B",
-        "fields": [{"name": "other_name", "type": "string"}]
-    }]
+    schema = [
+        {"type": "record", "name": "A", "fields": [{"name": "name", "type": "string"}]},
+        {
+            "type": "record",
+            "name": "B",
+            "fields": [{"name": "other_name", "type": "string"}],
+        },
+    ]
 
     records = [{"name": "abc", "other": "asd"}]
 
@@ -1591,10 +1386,7 @@ def test_appending_records(tmpdir):
     schema = {
         "type": "record",
         "name": "test_appending_records",
-        "fields": [{
-            "name": "field",
-            "type": "string",
-        }]
+        "fields": [{"name": "field", "type": "string"}],
     }
 
     test_file = str(tmpdir.join("test.avro"))
@@ -1617,10 +1409,7 @@ def test_appending_records_with_io_stream():
     schema = {
         "type": "record",
         "name": "test_appending_records_with_io_stream",
-        "fields": [{
-            "name": "field",
-            "type": "string",
-        }]
+        "fields": [{"name": "field", "type": "string"}],
     }
 
     stream = MemoryIO()
@@ -1653,10 +1442,7 @@ def test_appending_records_wrong_mode_fails(tmpdir):
     schema = {
         "type": "record",
         "name": "test_appending_records_wrong_mode_fails",
-        "fields": [{
-            "name": "field",
-            "type": "string",
-        }]
+        "fields": [{"name": "field", "type": "string"}],
     }
 
     test_file = str(tmpdir.join("test.avro"))
@@ -1676,10 +1462,7 @@ def test_appending_records_different_schema_fails(tmpdir):
     schema = {
         "type": "record",
         "name": "test_appending_records_different_schema_fails",
-        "fields": [{
-            "name": "field",
-            "type": "string",
-        }]
+        "fields": [{"name": "field", "type": "string"}],
     }
 
     test_file = str(tmpdir.join("test.avro"))
@@ -1690,10 +1473,7 @@ def test_appending_records_different_schema_fails(tmpdir):
     different_schema = {
         "type": "record",
         "name": "test_appending_records",
-        "fields": [{
-            "name": "field",
-            "type": "int",
-        }]
+        "fields": [{"name": "field", "type": "int"}],
     }
 
     with open(test_file, "a+b") as new_file:
@@ -1705,19 +1485,15 @@ def test_appending_records_different_schema_fails(tmpdir):
 
 def test_user_specified_sync():
     """https://github.com/fastavro/fastavro/issues/300"""
-    schema = {
-        "type": "record",
-        "name": "test_user_specified_sync",
-        "fields": []
-    }
+    schema = {"type": "record", "name": "test_user_specified_sync", "fields": []}
 
     file1 = MemoryIO()
     file2 = MemoryIO()
 
     records = [{}]
 
-    fastavro.writer(file1, schema, records, sync_marker=b'sync')
-    fastavro.writer(file2, schema, records, sync_marker=b'sync')
+    fastavro.writer(file1, schema, records, sync_marker=b"sync")
+    fastavro.writer(file2, schema, records, sync_marker=b"sync")
 
     assert file1.getvalue() == file2.getvalue()
 
@@ -1725,27 +1501,26 @@ def test_user_specified_sync():
 def test_order_of_values_in_map():
     """https://github.com/fastavro/fastavro/issues/303"""
     schema = {
-        'doc': 'A weather reading.',
-        'name': 'Weather',
-        'namespace': 'test',
-        'type': 'record',
-        'fields': [{
-            'name': 'metadata',
-            'type': {
-                'type': 'map',
-                'values': [{
-                    'type': 'array',
-                    'items': 'string'
-                }, {
-                    'type': 'map',
-                    'values': ['string']
-                }]
+        "doc": "A weather reading.",
+        "name": "Weather",
+        "namespace": "test",
+        "type": "record",
+        "fields": [
+            {
+                "name": "metadata",
+                "type": {
+                    "type": "map",
+                    "values": [
+                        {"type": "array", "items": "string"},
+                        {"type": "map", "values": ["string"]},
+                    ],
+                },
             }
-        }],
+        ],
     }
     parsed_schema = fastavro.parse_schema(schema)
 
-    records = [{'metadata': {'map1': {'map2': 'str'}}}]
+    records = [{"metadata": {"map1": {"map2": "str"}}}]
 
     assert records == roundtrip(parsed_schema, records)
 
@@ -1755,7 +1530,7 @@ def test_reader_schema_attributes_throws_deprecation():
     schema = {
         "type": "record",
         "name": "test_reader_schema_attributes_throws_deprecation",
-        "fields": []
+        "fields": [],
     }
 
     stream = MemoryIO()
@@ -1773,54 +1548,44 @@ def test_writer_schema_always_read():
     schema = {
         "type": "record",
         "name": "Outer",
-        "fields": [{
-            "name": "item",
-            "type": [{
-                "type": "record",
-                "name": "Inner1",
-                "fields": [{
-                    "name": "id",
-                    "type": {
+        "fields": [
+            {
+                "name": "item",
+                "type": [
+                    {
                         "type": "record",
-                        "name": "UUID",
-                        "fields": [{
-                            "name": "id",
-                            "type": "string"
-                        }]
+                        "name": "Inner1",
+                        "fields": [
+                            {
+                                "name": "id",
+                                "type": {
+                                    "type": "record",
+                                    "name": "UUID",
+                                    "fields": [{"name": "id", "type": "string"}],
+                                },
+                                "default": {"id": ""},
+                            },
+                            {"name": "description", "type": "string"},
+                            {"name": "size", "type": "int"},
+                        ],
                     },
-                    "default": {
-                        "id": ""
-                    }
-                }, {
-                    "name": "description",
-                    "type": "string"
-                }, {
-                    "name": "size",
-                    "type": "int"
-                }]
-            }, {
-                "type": "record",
-                "name": "Inner2",
-                "fields": [{
-                    "name": "id",
-                    "type": "UUID",
-                    "default": {
-                        "id": ""
-                    }
-                }, {
-                    "name": "name",
-                    "type": "string"
-                }, {
-                    "name": "age",
-                    "type": "long"
-                }]
-            }]
-        }]
+                    {
+                        "type": "record",
+                        "name": "Inner2",
+                        "fields": [
+                            {"name": "id", "type": "UUID", "default": {"id": ""}},
+                            {"name": "name", "type": "string"},
+                            {"name": "age", "type": "long"},
+                        ],
+                    },
+                ],
+            }
+        ],
     }
 
     records = [
-        {'item': {'description': 'test', 'size': 1}},
-        {'item': {'id': {'id': '#1'}, 'name': 'foobar', 'age': 12}}
+        {"item": {"description": "test", "size": 1}},
+        {"item": {"id": {"id": "#1"}, "name": "foobar", "age": 12}},
     ]
 
     file = MemoryIO()
@@ -1830,10 +1595,10 @@ def test_writer_schema_always_read():
 
     # Clean the schema entries to simulate reading from a fresh process (no
     # cached schemas)
-    del SCHEMA_DEFS['Outer']
-    del SCHEMA_DEFS['Inner1']
-    del SCHEMA_DEFS['Inner2']
-    del SCHEMA_DEFS['UUID']
+    del SCHEMA_DEFS["Outer"]
+    del SCHEMA_DEFS["Inner1"]
+    del SCHEMA_DEFS["Inner2"]
+    del SCHEMA_DEFS["UUID"]
 
     # This should not raise a KeyError
     fastavro.reader(file)
@@ -1844,7 +1609,7 @@ def test_hint_is_not_written_to_the_file():
     schema = {
         "type": "record",
         "name": "test_hint_is_not_written_to_the_file",
-        "fields": []
+        "fields": [],
     }
 
     parsed_schema = fastavro.parse_schema(schema)
@@ -1888,10 +1653,7 @@ def test_more_null_union_issues():
         ],
     }
 
-    records = [
-        {"name": "name1", "address": [{"street": "22st"}]},
-        {"name": "name2"},
-    ]
+    records = [{"name": "name1", "address": [{"street": "22st"}]}, {"name": "name2"}]
 
     expected = [
         {"name": "name1", "address": [{"street": "22st", "zip": None}]},

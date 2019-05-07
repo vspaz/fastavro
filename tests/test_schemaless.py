@@ -12,10 +12,7 @@ def test_schemaless_writer_and_reader():
         "type": "record",
         "name": "Test",
         "namespace": "test",
-        "fields": [{
-            "name": "field",
-            "type": {"type": "string"}
-        }]
+        "fields": [{"name": "field", "type": {"type": "string"}}],
     }
     record = {"field": "test"}
     new_file = MemoryIO()
@@ -29,10 +26,7 @@ def test_boolean_roundtrip():
     schema = {
         "type": "record",
         "name": "test_boolean_roundtrip",
-        "fields": [{
-            "name": "field",
-            "type": "boolean"
-        }]
+        "fields": [{"name": "field", "type": "boolean"}],
     }
     record = {"field": True}
     new_file = MemoryIO()
@@ -51,41 +45,32 @@ def test_boolean_roundtrip():
 
 def test_default_values_in_reader():
     writer_schema = {
-        'name': 'name1',
-        'type': 'record',
-        'namespace': 'namespace1',
-        'fields': [{
-            'doc': 'test',
-            'type': 'int',
-            'name': 'good_field'
-        }],
-        'doc': 'test'
+        "name": "name1",
+        "type": "record",
+        "namespace": "namespace1",
+        "fields": [{"doc": "test", "type": "int", "name": "good_field"}],
+        "doc": "test",
     }
 
     reader_schema = {
-        'name': 'name1',
-        'doc': 'test',
-        'namespace': 'namespace1',
-        'fields': [{
-            'name': 'good_field',
-            'doc': 'test',
-            'type': 'int'
-        }, {
-            'name': 'good_compatible_field',
-            'doc': 'test',
-            'default': 1,
-            'type': 'int'
-        }],
-        'type': 'record'
+        "name": "name1",
+        "doc": "test",
+        "namespace": "namespace1",
+        "fields": [
+            {"name": "good_field", "doc": "test", "type": "int"},
+            {
+                "name": "good_compatible_field",
+                "doc": "test",
+                "default": 1,
+                "type": "int",
+            },
+        ],
+        "type": "record",
     }
 
-    record = {'good_field': 1}
+    record = {"good_field": 1}
     new_file = MemoryIO()
     fastavro.schemaless_writer(new_file, writer_schema, record)
     new_file.seek(0)
-    new_record = fastavro.schemaless_reader(
-        new_file,
-        writer_schema,
-        reader_schema,
-    )
-    assert new_record == {'good_field': 1, 'good_compatible_field': 1}
+    new_record = fastavro.schemaless_reader(new_file, writer_schema, reader_schema)
+    assert new_record == {"good_field": 1, "good_compatible_field": 1}

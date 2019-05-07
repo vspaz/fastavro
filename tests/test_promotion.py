@@ -12,29 +12,21 @@ def roundtrip(record, writer_schema, reader_schema):
 
 
 def test_int_promotion():
-    int_schema = {
-        "type": "int",
-    }
+    int_schema = {"type": "int"}
 
-    long_schema = {
-        "type": "long",
-    }
+    long_schema = {"type": "long"}
 
     result = roundtrip(1, int_schema, long_schema)
     assert result == 1
     assert isinstance(result, long)
 
-    float_schema = {
-        "type": "float",
-    }
+    float_schema = {"type": "float"}
 
     result = roundtrip(1, int_schema, float_schema)
     assert result == 1.0
     assert isinstance(result, float)
 
-    double_schema = {
-        "type": "double",
-    }
+    double_schema = {"type": "double"}
 
     result = roundtrip(1, int_schema, double_schema)
     assert result == 1.0
@@ -43,21 +35,15 @@ def test_int_promotion():
 
 
 def test_long_promotion():
-    long_schema = {
-        "type": "long",
-    }
+    long_schema = {"type": "long"}
 
-    float_schema = {
-        "type": "float",
-    }
+    float_schema = {"type": "float"}
 
     result = roundtrip(1, long_schema, float_schema)
     assert result == 1.0
     assert isinstance(result, float)
 
-    double_schema = {
-        "type": "double",
-    }
+    double_schema = {"type": "double"}
 
     result = roundtrip(1, long_schema, double_schema)
     assert result == 1.0
@@ -66,13 +52,9 @@ def test_long_promotion():
 
 
 def test_float_promotion():
-    float_schema = {
-        "type": "float",
-    }
+    float_schema = {"type": "float"}
 
-    double_schema = {
-        "type": "double",
-    }
+    double_schema = {"type": "double"}
 
     result = roundtrip(1.0, float_schema, double_schema)
     assert result == 1.0
@@ -81,27 +63,19 @@ def test_float_promotion():
 
 
 def test_string_promotion():
-    string_schema = {
-        "type": "string",
-    }
+    string_schema = {"type": "string"}
 
-    bytes_schema = {
-        "type": "bytes",
-    }
+    bytes_schema = {"type": "bytes"}
 
-    result = roundtrip(u"foo", string_schema, bytes_schema)
+    result = roundtrip("foo", string_schema, bytes_schema)
     assert result == b"foo"
     assert isinstance(result, bytes)
 
 
 def test_bytes_promotion():
-    bytes_schema = {
-        "type": "bytes",
-    }
+    bytes_schema = {"type": "bytes"}
 
-    string_schema = {
-        "type": "string",
-    }
+    string_schema = {"type": "string"}
 
     result = roundtrip(b"foo", bytes_schema, string_schema)
-    assert result == u"foo"
+    assert result == "foo"

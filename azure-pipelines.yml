@@ -38,6 +38,9 @@ jobs:
     displayName: 'Install dependencies'
 
   - script: |
+      if [[ $(python.version) == "3.7" ]]; then
+        ./run-black.sh
+      fi
       ./run-tests.sh
     displayName: 'pytest'
 
